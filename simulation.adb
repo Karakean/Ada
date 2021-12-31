@@ -103,11 +103,11 @@ procedure Simulation is
     if Assembly_Number /= 0 then
             Put_Line(Consumer_Name(Consumer_Nb) & ": taken assembly " &
             Assembly_Name(Assembly_Type) & " number " &
-            Integer'Image(Assembly_Number));         
+            Integer'Image(Assembly_Number));
     else
-            Put_Line(Consumer_Name(Consumer_Nb) & ": did not receive his order " &
-              "due to lack of ingredients");
-    end if; 
+            Put_Line( "The order of " & Consumer_Name(Consumer_Nb) &
+            " has been canceled due to lack of ingredients");
+    end if;
       end loop;
    end Consumer;
 
@@ -119,11 +119,12 @@ procedure Simulation is
       Assembly_Content: array(Assembly_Type, Product_Type) of Integer
 	:= ((1, 0, 2, 1, 0),
 	    (1, 0, 1, 1, 2),
-	    (0, 2, 1, 1, 1));
+	    (0, 0, 1, 1, 1));
       Max_Assembly_Content: array(Product_Type) of Integer;
       Assembly_Number: array(Assembly_Type) of Integer
 	:= (1, 1, 1);
       In_Storage: Integer := 0;
+      Rejection: Integer := 0;
 
       procedure Setup_Variables is
       begin
@@ -142,7 +143,7 @@ procedure Simulation is
 	 -- how many products are for production of arbitrary assembly
 	 Lacking: array(Product_Type) of Integer;
 	 -- how much room is needed in storage to produce arbitrary assembly
-	 Lacking_room: Integer;
+    Lacking_room: Integer;
 	 MP: Boolean;			--  can accept
       begin
 	 if In_Storage >= Storage_Capacity then
@@ -173,7 +174,7 @@ procedure Simulation is
 	    -- there is enough room in storage for arbitrary assembly
 	    return True;
 	 else
-	    -- no room for this product
+            -- no room for this product
 	    return False;
 	 end if;
       end Can_Accept;
@@ -195,7 +196,17 @@ procedure Simulation is
 		       & Product_Name(W));
 	 end loop;
       end Storage_Contents;
-
+   
+      procedure Buffer_Clearance is
+      begin
+         for W in Product_Type loop
+            Storage(W) := 0;
+            In_Storage := 0;
+         end loop;
+         put_line("Someone has stolen all ingredients.");
+         Rejection := 0;
+      end Buffer_Clearance;
+        
    begin
       Put_Line("Buffer started");
       Setup_Variables;
@@ -208,7 +219,11 @@ procedure Simulation is
 	      In_Storage := In_Storage + 1;
   	   else
 	      Put_Line("Rejected product " & Product_Name(Product) & " number " &
-		    Integer'Image(Number));
+                  Integer'Image(Number));
+               Rejection := Rejection + 1;
+         if Rejection >= 6 then
+                  Buffer_Clearance;
+         end if;
 	   end if;
 	 end Take;
 	 Storage_Contents;
