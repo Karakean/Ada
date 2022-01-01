@@ -1,5 +1,5 @@
 -- A skeleton of a program for an assignment in programming languages
--- The students should rename the tasks of producers, consumers, and the buffer
+-- The students should rename the tasks of producers, Customers, and the Storeroom
 -- Then, they should change them so that they would fit their assignments
 -- They should also complete the code with constructions that lack there
 with Ada.Text_IO; use Ada.Text_IO;
@@ -9,17 +9,17 @@ with Ada.Numerics.Discrete_Random;
 
 procedure Simulation is
    Number_Of_Products: constant Integer := 5;
-   Number_Of_Assemblies: constant Integer := 3;
-   Number_Of_Consumers: constant Integer := 2;
+   Number_Of_Dishes: constant Integer := 3;
+   Number_Of_Customers: constant Integer := 2;
    subtype Product_Type is Integer range 1 .. Number_Of_Products;
-   subtype Assembly_Type is Integer range 1 .. Number_Of_Assemblies;
-   subtype Consumer_Type is Integer range 1 .. Number_Of_Consumers;
+   subtype Dish_Type is Integer range 1 .. Number_Of_Dishes;
+   subtype Customer_Type is Integer range 1 .. Number_Of_Customers;
    Product_Name: constant array (Product_Type) of String(1 .. 9)
      := ("Macaroni ", "Dough    ", "Olive oil", "Garlic   ", "Tomatoes ");
-   Assembly_Name: constant array (Assembly_Type) of String(1 .. 22)
+   Dish_Name: constant array (Dish_Type) of String(1 .. 22)
      := ("Spaghetti aglio e olio", "Penne all'arrabbiata  ", "Pizza Marinara        ");
-   package Random_Assembly is new
-     Ada.Numerics.Discrete_Random(Assembly_Type);
+   package Random_Dish is new
+     Ada.Numerics.Discrete_Random(Dish_Type);
    type My_Str is new String(1 ..256);
 
    -- Producer produces determined product
@@ -28,24 +28,24 @@ procedure Simulation is
       entry Start(Product: in Product_Type; Production_Time: in Integer);
    end Producer;
 
-   -- Consumer gets an arbitrary assembly of several products from the buffer
-   task type Consumer is
-      -- Give the Consumer an identity
-      entry Start(Consumer_Number: in Consumer_Type;
+   -- Customer gets an arbitrary Dish of several products from the Storeroom
+   task type Customer is
+      -- Give the Customer an identity
+      entry Start(Customer_Number: in Customer_Type;
 		    Consumption_Time: in Integer);
-   end Consumer;
+   end Customer;
 
-   -- In the Buffer, products are assemblied into an assembly
-   task type Buffer is
+   -- In the Storeroom, products are assemblied into an Dish
+   task type Storeroom is
       -- Accept a product to the storage provided there is a room for it
       entry Take(Product: in Product_Type; Number: in Integer);
-      -- Deliver an assembly provided there are enough products for it
-      entry Deliver(Assembly: in Assembly_Type; Number: out Integer);
-   end Buffer;
+      -- Serve an Dish provided there are enough products for it
+      entry Serve(Dish: in Dish_Type; Number: out Integer);
+   end Storeroom;
 
    P: array ( 1 .. Number_Of_Products ) of Producer;
-   K: array ( 1 .. Number_Of_Consumers ) of Consumer;
-   B: Buffer;
+   K: array ( 1 .. Number_Of_Customers ) of Customer;
+   B: Storeroom;
 
    task body Producer is
       subtype Production_Time_Range is Integer range 3 .. 6;
@@ -73,55 +73,55 @@ procedure Simulation is
       end loop;
    end Producer;
 
-   task body Consumer is
+   task body Customer is
       subtype Consumption_Time_Range is Integer range 4 .. 8;
       package Random_Consumption is new
 	Ada.Numerics.Discrete_Random(Consumption_Time_Range);
       G: Random_Consumption.Generator;	--  random number generator (time)
-      G2: Random_Assembly.Generator;	--  also (assemblies)
-      Consumer_Nb: Consumer_Type;
-      Assembly_Number: Integer;
+      G2: Random_Dish.Generator;	--  also (dishes)
+      Customer_Nb: Customer_Type;
+      Dish_Number: Integer;
       Consumption: Integer;
-      Assembly_Type: Integer;
-      Consumer_Name: constant array (1 .. Number_Of_Consumers)
+      Dish_Type: Integer;
+      Customer_Name: constant array (1 .. Number_Of_Customers)
 	of String(1 .. 9)
-	:= ("Consumer1", "Consumer2");
+	:= ("Customer1", "Customer2");
    begin
-      accept Start(Consumer_Number: in Consumer_Type;
+      accept Start(Customer_Number: in Customer_Type;
 		     Consumption_Time: in Integer) do
 	 Random_Consumption.Reset(G);	--  ustaw generator
 
-	 Consumer_Nb := Consumer_Number;
+	 Customer_Nb := Customer_Number;
 	 Consumption := Consumption_Time;
       end Start;
-      Put_Line("Started consumer " & Consumer_Name(Consumer_Nb));
+      Put_Line("Started Customer " & Customer_Name(Customer_Nb));
       loop
 	 delay Duration(Random_Consumption.Random(G)); --  simulate consumption
-	 Assembly_Type := Random_Assembly.Random(G2);
-	 -- take an assembly for consumption
-         B.Deliver(Assembly_Type, Assembly_Number);
-    if Assembly_Number /= 0 then
-            Put_Line(Consumer_Name(Consumer_Nb) & ": taken assembly " &
-            Assembly_Name(Assembly_Type) & " number " &
-            Integer'Image(Assembly_Number));
+	 Dish_Type := Random_Dish.Random(G2);
+	 -- take an Dish for consumption
+         B.Serve(Dish_Type, Dish_Number);
+    if Dish_Number /= 0 then
+            Put_Line(Customer_Name(Customer_Nb) & ": taken Dish " &
+            Dish_Name(Dish_Type) & " number " &
+            Integer'Image(Dish_Number));
     else
-            Put_Line( "The order of " & Consumer_Name(Consumer_Nb) &
+            Put_Line( "The order of " & Customer_Name(Customer_Nb) &
             " has been canceled due to lack of ingredients");
     end if;
       end loop;
-   end Consumer;
+   end Customer;
 
-   task body Buffer is
+   task body Storeroom is
       Storage_Capacity: constant Integer := 30;
       type Storage_type is array (Product_Type) of Integer;
       Storage: Storage_type
 	:= (0, 0, 0, 0, 0);
-      Assembly_Content: array(Assembly_Type, Product_Type) of Integer
+      Dish_Content: array(Dish_Type, Product_Type) of Integer
 	:= ((1, 0, 2, 1, 0),
 	    (1, 0, 1, 1, 2),
-	    (0, 0, 1, 1, 1));
-      Max_Assembly_Content: array(Product_Type) of Integer;
-      Assembly_Number: array(Assembly_Type) of Integer
+	    (0, 2, 1, 1, 1));
+      Max_Dish_Content: array(Product_Type) of Integer;
+      Dish_Number: array(Dish_Type) of Integer
 	:= (1, 1, 1);
       In_Storage: Integer := 0;
       Rejection: Integer := 0;
@@ -129,10 +129,10 @@ procedure Simulation is
       procedure Setup_Variables is
       begin
 	 for W in Product_Type loop
-	    Max_Assembly_Content(W) := 0;
-	    for Z in Assembly_Type loop
-	       if Assembly_Content(Z, W) > Max_Assembly_Content(W) then
-		  Max_Assembly_Content(W) := Assembly_Content(Z, W);
+	    Max_Dish_Content(W) := 0;
+	    for Z in Dish_Type loop
+	       if Dish_Content(Z, W) > Max_Dish_Content(W) then
+		  Max_Dish_Content(W) := Dish_Content(Z, W);
 	       end if;
 	    end loop;
 	 end loop;
@@ -140,9 +140,9 @@ procedure Simulation is
 
       function Can_Accept(Product: Product_Type) return Boolean is
 	 Free: Integer;		--  free room in the storage
-	 -- how many products are for production of arbitrary assembly
+	 -- how many products are for production of arbitrary Dish
 	 Lacking: array(Product_Type) of Integer;
-	 -- how much room is needed in storage to produce arbitrary assembly
+	 -- how much room is needed in storage to produce arbitrary Dish
     Lacking_room: Integer;
 	 MP: Boolean;			--  can accept
       begin
@@ -153,25 +153,25 @@ procedure Simulation is
 	 Free := Storage_Capacity - In_Storage;
 	 MP := True;
 	 for W in Product_Type loop
-	    if Storage(W) < Max_Assembly_Content(W) then
+	    if Storage(W) < Max_Dish_Content(W) then
 	       MP := False;
 	    end if;
 	 end loop;
 	 if MP then
 	    return True;		--  storage has products for arbitrary
-	       				--  assembly
+	       				--  Dish
 	 end if;
-	 if Integer'Max(0, Max_Assembly_Content(Product) - Storage(Product)) > 0 then
+	 if Integer'Max(0, Max_Dish_Content(Product) - Storage(Product)) > 0 then
 	    -- exactly this product lacks
 	    return True;
 	 end if;
 	 Lacking_room := 1;			--  insert current product
 	 for W in Product_Type loop
-	    Lacking(W) := Integer'Max(0, Max_Assembly_Content(W) - Storage(W));
+	    Lacking(W) := Integer'Max(0, Max_Dish_Content(W) - Storage(W));
 	    Lacking_room := Lacking_room + Lacking(W);
 	 end loop;
 	 if Free >= Lacking_room then
-	    -- there is enough room in storage for arbitrary assembly
+	    -- there is enough room in storage for arbitrary Dish
 	    return True;
 	 else
             -- no room for this product
@@ -179,15 +179,15 @@ procedure Simulation is
 	 end if;
       end Can_Accept;
 
-      function Can_Deliver(Assembly: Assembly_Type) return Boolean is
+      function Can_Serve(Dish: Dish_Type) return Boolean is
       begin
 	 for W in Product_Type loop
-	    if Storage(W) < Assembly_Content(Assembly, W) then
+	    if Storage(W) < Dish_Content(Dish, W) then
 	       return False;
 	    end if;
 	 end loop;
 	 return True;
-      end Can_Deliver;
+      end Can_Serve;
 
       procedure Storage_Contents is
       begin
@@ -196,19 +196,21 @@ procedure Simulation is
 		       & Product_Name(W));
 	 end loop;
       end Storage_Contents;
-   
-      procedure Buffer_Clearance is
+
+      procedure Storeroom_Clearance is
       begin
          for W in Product_Type loop
             Storage(W) := 0;
             In_Storage := 0;
          end loop;
-         put_line("Someone has stolen all ingredients.");
+         put_line("Someone has stolen all ingredients from storeroom. " &
+                    "Maybe angry producents whose products got spoiled " &
+                 "due to rejection?");
          Rejection := 0;
-      end Buffer_Clearance;
-        
+      end Storeroom_Clearance;
+
    begin
-      Put_Line("Buffer started");
+      Put_Line("Storeroom started");
       Setup_Variables;
       loop
 	 accept Take(Product: in Product_Type; Number: in Integer) do
@@ -218,39 +220,40 @@ procedure Simulation is
 	      Storage(Product) := Storage(Product) + 1;
 	      In_Storage := In_Storage + 1;
   	   else
-	      Put_Line("Rejected product " & Product_Name(Product) & " number " &
-                  Integer'Image(Number));
-               Rejection := Rejection + 1;
+	      Put_Line(Product_Name(Product) & " number " &
+                  Integer'Image(Number) & " has been rejected " &
+               "and it has spoiled due to lack of appropriate storage");
+                Rejection := Rejection + 1;
          if Rejection >= 6 then
-                  Buffer_Clearance;
+                  Storeroom_Clearance;
          end if;
 	   end if;
 	 end Take;
 	 Storage_Contents;
-	 accept Deliver(Assembly: in Assembly_Type; Number: out Integer) do
-	    if Can_Deliver(Assembly) then
-	       Put_Line("Delivered assembly " & Assembly_Name(Assembly) & " number " &
-			  Integer'Image(Assembly_Number(Assembly)));
+	 accept Serve(Dish: in Dish_Type; Number: out Integer) do
+	    if Can_Serve(Dish) then
+	       Put_Line("Served dish " & Dish_Name(Dish) & " number " &
+			  Integer'Image(Dish_Number(Dish)));
 	       for W in Product_Type loop
-		  Storage(W) := Storage(W) - Assembly_Content(Assembly, W);
-		  In_Storage := In_Storage - Assembly_Content(Assembly, W);
+		  Storage(W) := Storage(W) - Dish_Content(Dish, W);
+		  In_Storage := In_Storage - Dish_Content(Dish, W);
 	       end loop;
-	       Number := Assembly_Number(Assembly);
-	       Assembly_Number(Assembly) := Assembly_Number(Assembly) + 1;
+	       Number := Dish_Number(Dish);
+	       Dish_Number(Dish) := Dish_Number(Dish) + 1;
 	    else
-	       Put_Line("Lacking products for assembly " & Assembly_Name(Assembly));
+	       Put_Line("Lacking ingredients for cooking " & Dish_Name(Dish));
 	       Number := 0;
 	    end if;
-	 end Deliver;
+	 end Serve;
 	 Storage_Contents;
       end loop;
-   end Buffer;
+   end Storeroom;
 
 begin
    for I in 1 .. Number_Of_Products loop
       P(I).Start(I, 10);
    end loop;
-   for J in 1 .. Number_Of_Consumers loop
+   for J in 1 .. Number_Of_Customers loop
       K(J).Start(J,12);
    end loop;
 end Simulation;
