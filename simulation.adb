@@ -98,16 +98,21 @@ procedure Simulation is
       loop
 	 delay Duration(Random_Consumption.Random(G)); --  simulate consumption
 	 Dish_Type := Random_Dish.Random(G2);
-	 -- take an Dish for consumption
-         B.Serve(Dish_Type, Dish_Number);
-    if Dish_Number /= 0 then
-            Put_Line(Customer_Name(Customer_Nb) & ": taken Dish " &
-            Dish_Name(Dish_Type) & " number " &
-            Integer'Image(Dish_Number));
-    else
+         -- take an Dish for consumption
+    select
+            B.Serve(Dish_Type, Dish_Number);
+            if Dish_Number /= 0 then
+               Put_Line(Customer_Name(Customer_Nb) & ": taken Dish " &
+               Dish_Name(Dish_Type) & " number " &
+               Integer'Image(Dish_Number));
+            else
             Put_Line( "The order of " & Customer_Name(Customer_Nb) &
-            " has been canceled due to lack of ingredients");
-    end if;
+                      " has been canceled due to lack of ingredients");
+            end if;
+    else
+            Put_Line(Customer_Name(Customer_Nb) &
+            " has canceled his order since he was waiting too long");
+    end select;
       end loop;
    end Customer;
 
@@ -125,6 +130,7 @@ procedure Simulation is
 	:= (1, 1, 1);
       In_Storage: Integer := 0;
       Rejection: Integer := 0;
+      Mess: Integer := 0;
 
       procedure Setup_Variables is
       begin
@@ -138,6 +144,8 @@ procedure Simulation is
 	 end loop;
       end Setup_Variables;
 
+
+      
       function Can_Accept(Product: Product_Type) return Boolean is
 	 Free: Integer;		--  free room in the storage
 	 -- how many products are for production of arbitrary Dish
@@ -197,7 +205,9 @@ procedure Simulation is
 	 end loop;
       end Storage_Contents;
 
-      procedure Storeroom_Clearance is
+      
+      
+       procedure Storeroom_Clearance is
       begin
          for W in Product_Type loop
             Storage(W) := 0;
@@ -208,11 +218,37 @@ procedure Simulation is
                  "due to rejection?");
          Rejection := 0;
       end Storeroom_Clearance;
-
+      
+      
+      procedure Reorganize_Storeroom is
+         Largest_Amount : Integer;
+         LAPT : Product_Type; --Largest Amount Product Type
+      begin
+            Largest_Amount := 0; 
+            for W in Product_Type loop
+               if (Storage(W) > Largest_Amount) then
+                  Largest_Amount := Storage(W);
+                  LAPT := W;
+               end if;
+         end loop;
+            Storage(LAPT) := Storage(LAPT) - 1;
+            In_Storage := In_Storage - 1;
+            Put_Line("The restaurant had too much " &
+            Product_Name(LAPT) & " so they gave away " &
+                       "some of it to people in need.");
+    end Reorganize_Storeroom;
+      
+      
    begin
       Put_Line("Storeroom started");
       Setup_Variables;
       loop
+         if(Mess >= 10) then
+            Put_Line("What a mess! Restaurant staff must " &
+                       "clean it up.");
+            Mess := 0;
+            delay 20.0;
+         end if;
 	 accept Take(Product: in Product_Type; Number: in Integer) do
 	   if Can_Accept(Product) then
 	      Put_Line("Accepted product " & Product_Name(Product) & " number " &
@@ -220,14 +256,9 @@ procedure Simulation is
 	      Storage(Product) := Storage(Product) + 1;
 	      In_Storage := In_Storage + 1;
   	   else
-	      Put_Line(Product_Name(Product) & " number " &
-                  Integer'Image(Number) & " has been rejected " &
-               "and it has spoiled due to lack of appropriate storage");
-                Rejection := Rejection + 1;
-         if Rejection >= 6 then
-                  Storeroom_Clearance;
-         end if;
-	   end if;
+	      Reorganize_Storeroom;
+      end if;
+      Mess := Mess + 1;
 	 end Take;
 	 Storage_Contents;
 	 accept Serve(Dish: in Dish_Type; Number: out Integer) do
@@ -243,7 +274,8 @@ procedure Simulation is
 	    else
 	       Put_Line("Lacking ingredients for cooking " & Dish_Name(Dish));
 	       Number := 0;
-	    end if;
+         end if;
+         Mess := Mess + 1;
 	 end Serve;
 	 Storage_Contents;
       end loop;
