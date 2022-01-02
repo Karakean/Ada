@@ -1,5 +1,5 @@
 -- A skeleton of a program for an assignment in programming languages
--- The students should rename the tasks of producers, Customers, and the Storeroom
+-- The students should rename the tasks of producers, Customers, and the Kitchen
 -- Then, they should change them so that they would fit their assignments
 -- They should also complete the code with constructions that lack there
 with Ada.Text_IO; use Ada.Text_IO;
@@ -28,24 +28,24 @@ procedure Simulation is
       entry Start(Product: in Product_Type; Production_Time: in Integer);
    end Producer;
 
-   -- Customer gets an arbitrary Dish of several products from the Storeroom
+   -- Customer gets an arbitrary Dish of several products from the Kitchen
    task type Customer is
       -- Give the Customer an identity
       entry Start(Customer_Number: in Customer_Type;
 		    Consumption_Time: in Integer);
    end Customer;
 
-   -- In the Storeroom, products are assemblied into an Dish
-   task type Storeroom is
-      -- Accept a product to the storage provided there is a room for it
+   -- In the Kitchen, products are assemblied into an Dish
+   task type Kitchen is
+      -- Accept a product to the kitchen provided there is a room for it
       entry Take(Product: in Product_Type; Number: in Integer);
       -- Serve an Dish provided there are enough products for it
       entry Serve(Dish: in Dish_Type; Number: out Integer);
-   end Storeroom;
+   end Kitchen;
 
    P: array ( 1 .. Number_Of_Products ) of Producer;
    K: array ( 1 .. Number_Of_Customers ) of Customer;
-   B: Storeroom;
+   B: Kitchen;
 
    task body Producer is
       subtype Production_Time_Range is Integer range 3 .. 6;
@@ -67,7 +67,7 @@ procedure Simulation is
 
 	 Put_Line("Produced product " & Product_Name(Product_Type_Number)
 		    & " number "  & Integer'Image(Product_Number));
-	 -- Accept for storage
+	 -- Accept for kitchen
 	 B.Take(Product_Type_Number, Product_Number);
 	 Product_Number := Product_Number + 1;
       end loop;
@@ -116,10 +116,10 @@ procedure Simulation is
       end loop;
    end Customer;
 
-   task body Storeroom is
-      Storage_Capacity: constant Integer := 30;
-      type Storage_type is array (Product_Type) of Integer;
-      Storage: Storage_type
+   task body Kitchen is
+      Kitchen_Capacity: constant Integer := 30;
+      type Kitchen_type is array (Product_Type) of Integer;
+      Kitchen: Kitchen_type
 	:= (0, 0, 0, 0, 0);
       Dish_Content: array(Dish_Type, Product_Type) of Integer
 	:= ((1, 0, 2, 1, 0),
@@ -128,7 +128,7 @@ procedure Simulation is
       Max_Dish_Content: array(Product_Type) of Integer;
       Dish_Number: array(Dish_Type) of Integer
 	:= (1, 1, 1);
-      In_Storage: Integer := 0;
+      In_Kitchen: Integer := 0;
       Rejection: Integer := 0;
       Mess: Integer := 0;
 
@@ -145,41 +145,41 @@ procedure Simulation is
       end Setup_Variables;
 
 
-      
+
       function Can_Accept(Product: Product_Type) return Boolean is
-	 Free: Integer;		--  free room in the storage
+	 Free: Integer;		--  free room in the kitchen
 	 -- how many products are for production of arbitrary Dish
 	 Lacking: array(Product_Type) of Integer;
-	 -- how much room is needed in storage to produce arbitrary Dish
+	 -- how much room is needed in kitchen to produce arbitrary Dish
     Lacking_room: Integer;
 	 MP: Boolean;			--  can accept
       begin
-	 if In_Storage >= Storage_Capacity then
+	 if In_Kitchen >= Kitchen_Capacity then
 	    return False;
 	 end if;
-	 -- There is free room in the storage
-	 Free := Storage_Capacity - In_Storage;
+	 -- There is free room in the kitchen
+	 Free := Kitchen_Capacity - In_Kitchen;
 	 MP := True;
 	 for W in Product_Type loop
-	    if Storage(W) < Max_Dish_Content(W) then
+	    if Kitchen(W) < Max_Dish_Content(W) then
 	       MP := False;
 	    end if;
 	 end loop;
 	 if MP then
-	    return True;		--  storage has products for arbitrary
+	    return True;		--  kitchen has products for arbitrary
 	       				--  Dish
 	 end if;
-	 if Integer'Max(0, Max_Dish_Content(Product) - Storage(Product)) > 0 then
+	 if Integer'Max(0, Max_Dish_Content(Product) - Kitchen(Product)) > 0 then
 	    -- exactly this product lacks
 	    return True;
 	 end if;
 	 Lacking_room := 1;			--  insert current product
 	 for W in Product_Type loop
-	    Lacking(W) := Integer'Max(0, Max_Dish_Content(W) - Storage(W));
+	    Lacking(W) := Integer'Max(0, Max_Dish_Content(W) - Kitchen(W));
 	    Lacking_room := Lacking_room + Lacking(W);
 	 end loop;
 	 if Free >= Lacking_room then
-	    -- there is enough room in storage for arbitrary Dish
+	    -- there is enough room in kitchen for arbitrary Dish
 	    return True;
 	 else
             -- no room for this product
@@ -190,57 +190,57 @@ procedure Simulation is
       function Can_Serve(Dish: Dish_Type) return Boolean is
       begin
 	 for W in Product_Type loop
-	    if Storage(W) < Dish_Content(Dish, W) then
+	    if Kitchen(W) < Dish_Content(Dish, W) then
 	       return False;
 	    end if;
 	 end loop;
 	 return True;
       end Can_Serve;
 
-      procedure Storage_Contents is
+      procedure Kitchen_Contents is
       begin
 	 for W in Product_Type loop
-	    Put_Line("Storage contents: " & Integer'Image(Storage(W)) & " "
+	    Put_Line("Kitchen contents: " & Integer'Image(Kitchen(W)) & " "
 		       & Product_Name(W));
 	 end loop;
-      end Storage_Contents;
+      end Kitchen_Contents;
 
-      
-      
-       procedure Storeroom_Clearance is
+
+
+       procedure Kitchen_Clearance is
       begin
          for W in Product_Type loop
-            Storage(W) := 0;
-            In_Storage := 0;
+            Kitchen(W) := 0;
+            In_Kitchen := 0;
          end loop;
-         put_line("Someone has stolen all ingredients from storeroom. " &
+         put_line("Someone has stolen all ingredients from Kitchen. " &
                     "Maybe angry producents whose products got spoiled " &
                  "due to rejection?");
          Rejection := 0;
-      end Storeroom_Clearance;
-      
-      
-      procedure Reorganize_Storeroom is
+      end Kitchen_Clearance;
+
+
+      procedure Kitchen_Giveaway is
          Largest_Amount : Integer;
          LAPT : Product_Type; --Largest Amount Product Type
       begin
-            Largest_Amount := 0; 
+            Largest_Amount := 0;
             for W in Product_Type loop
-               if (Storage(W) > Largest_Amount) then
-                  Largest_Amount := Storage(W);
+               if (Kitchen(W) > Largest_Amount) then
+                  Largest_Amount := Kitchen(W);
                   LAPT := W;
                end if;
          end loop;
-            Storage(LAPT) := Storage(LAPT) - 1;
-            In_Storage := In_Storage - 1;
+            Kitchen(LAPT) := Kitchen(LAPT) - 1;
+            In_Kitchen := In_Kitchen - 1;
             Put_Line("The restaurant had too much " &
             Product_Name(LAPT) & " so they gave away " &
                        "some of it to people in need.");
-    end Reorganize_Storeroom;
-      
-      
+    end Kitchen_Giveaway;
+
+
    begin
-      Put_Line("Storeroom started");
+      Put_Line("Kitchen started");
       Setup_Variables;
       loop
          if(Mess >= 10) then
@@ -252,22 +252,22 @@ procedure Simulation is
 	 accept Take(Product: in Product_Type; Number: in Integer) do
 	   if Can_Accept(Product) then
 	      Put_Line("Accepted product " & Product_Name(Product) & " number " &
-		Integer'Image(Number));
-	      Storage(Product) := Storage(Product) + 1;
-	      In_Storage := In_Storage + 1;
+                  Integer'Image(Number));
+	      Kitchen(Product) := Kitchen(Product) + 1;
+	      In_Kitchen := In_Kitchen + 1;
   	   else
-	      Reorganize_Storeroom;
+	      Kitchen_Giveaway;
       end if;
       Mess := Mess + 1;
 	 end Take;
-	 Storage_Contents;
+	 Kitchen_Contents;
 	 accept Serve(Dish: in Dish_Type; Number: out Integer) do
 	    if Can_Serve(Dish) then
 	       Put_Line("Served dish " & Dish_Name(Dish) & " number " &
 			  Integer'Image(Dish_Number(Dish)));
 	       for W in Product_Type loop
-		  Storage(W) := Storage(W) - Dish_Content(Dish, W);
-		  In_Storage := In_Storage - Dish_Content(Dish, W);
+		  Kitchen(W) := Kitchen(W) - Dish_Content(Dish, W);
+		  In_Kitchen := In_Kitchen - Dish_Content(Dish, W);
 	       end loop;
 	       Number := Dish_Number(Dish);
 	       Dish_Number(Dish) := Dish_Number(Dish) + 1;
@@ -277,9 +277,9 @@ procedure Simulation is
          end if;
          Mess := Mess + 1;
 	 end Serve;
-	 Storage_Contents;
+	 Kitchen_Contents;
       end loop;
-   end Storeroom;
+   end Kitchen;
 
 begin
    for I in 1 .. Number_Of_Products loop
